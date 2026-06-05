@@ -19,6 +19,7 @@ _crc_value::
 	.area CSEG    (CODE)
 ;	.area BANK1   (CODE)
 _crc16:
+	push	BANK
 	mov	BANK, #1
 	push	dph
 	push	dpl
@@ -48,6 +49,7 @@ _crc16:
 	pop	dpl
 	pop	dph
 ;	clr	DPS
+	pop	BANK
 	ret
 
 	.area BANK1   (CODE)

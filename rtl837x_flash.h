@@ -22,5 +22,12 @@ void flash_read_bulk(__xdata uint8_t *dst);
 void flash_write_bytes(__xdata uint8_t *ptr);
 __code char* get_flash_size_str(void);
 
+extern __xdata uint8_t diag_cmd;
+extern __xdata uint8_t diag_dummy;
+extern __xdata uint8_t diag_div;
+extern __xdata uint8_t diag_cfg;
+void flash_read_diagnostic(__xdata uint8_t *dst);
+uint8_t flash_read_status(void);
+
 #endif
 
