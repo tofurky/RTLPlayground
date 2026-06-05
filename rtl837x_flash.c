@@ -3,6 +3,7 @@
  * This code is in the Public Domain
  */
 
+#include <8051.h>
 #include <stdint.h>
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
@@ -344,4 +345,63 @@ void flash_write_bytes(__xdata uint8_t *ptr)
 	};
 	while (flash_read_status() & 0x1);
 	flash_configure_mmio();
+}
+
+__xdata uint8_t diag_cmd;
+__xdata uint8_t diag_dummy;
+__xdata uint8_t diag_div;
+__xdata uint8_t diag_cfg;
+
+void flash_read_diagnostic(__xdata uint8_t *dst)
+{
+	uint8_t ea_save;
+	uint8_t config_save;
+	uint8_t div_save;
+
+	while (flash_read_status() & 0x1);
+
+	ea_save = EA;
+	EA = 0;
+
+	config_save = SFR_FLASH_CONFIG;
+	div_save = SFR_FLASH_CONF_DIV;
+
+	while(SFR_FLASH_EXEC_BUSY);
+	SFR_FLASH_CONFIG = diag_cfg;
+	SFR_FLASH_CONF_DIV = diag_div;
+	while(SFR_FLASH_EXEC_BUSY);
+
+	SFR_FLASH_MODEB = 0x0;
+	SFR_FLASH_CMD_R = diag_cmd;
+	SFR_FLASH_DUMMYCYCLES = diag_dummy;
+
+	while (1) {
+		SFR_FLASH_ADDR16 = flash_region.addr >> 16;
+		SFR_FLASH_ADDR8 = flash_region.addr >> 8;
+		SFR_FLASH_ADDR0 = flash_region.addr;
+		flash_region.addr += 4;
+
+		SFR_FLASH_TCONF = 4;
+		SFR_FLASH_EXEC_GO = 1;
+		while(SFR_FLASH_EXEC_BUSY);
+
+		*dst++ = SFR_FLASH_DATA0;
+		if (flash_region.len == 1) break;
+		*dst++ = SFR_FLASH_DATA8;
+		if (flash_region.len == 2) break;
+		*dst++ = SFR_FLASH_DATA16;
+		if (flash_region.len == 3) break;
+		*dst++ = SFR_FLASH_DATA24;
+		if (flash_region.len == 4) break;
+
+		flash_region.len -= 4;
+	}
+
+	while(SFR_FLASH_EXEC_BUSY);
+	SFR_FLASH_CONFIG = config_save;
+	SFR_FLASH_CONF_DIV = div_save;
+	while(SFR_FLASH_EXEC_BUSY);
+
+	flash_configure_mmio();
+	EA = ea_save;
 }

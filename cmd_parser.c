@@ -1309,6 +1309,226 @@ void parse_syslog(void)
 	}
 }
 
+#define DIAGNOSTIC_CHUNK_SIZE 1024
+
+// External references to the CRC variables and routine
+extern __xdata uint16_t crc_value;
+void crc16(__xdata uint8_t *v) __naked;
+
+void parse_crcflash(void)
+{
+	static __xdata uint32_t addr;
+	static __xdata uint32_t len;
+	static __xdata uint8_t  cmd_r;
+	static __xdata uint8_t  dummy;
+	static __xdata uint8_t  div;
+	static __xdata uint8_t  cfg;
+	static __xdata uint32_t bytes_left;
+	static __xdata uint16_t block_len;
+	static __xdata uint16_t i;
+	static __xdata uint8_t * __xdata bptr;
+	static __xdata uint8_t  hex_size;
+
+	// Usage: crcflash <addr> <len> <cmd_r> <dummy> <div> <cfg>
+	if (cmd_words_len != 7) goto err;
+
+	hex_size = atoi_hex(cmd_words_b[1]);
+	if (hex_size == 0) goto err;
+	if (hex_size == 1) {
+		addr = hexvalue[0];
+	} else if (hex_size == 2) {
+		addr = ((uint16_t)hexvalue[0] << 8) | hexvalue[1];
+	} else if (hex_size == 3) {
+		addr = ((uint32_t)hexvalue[0] << 16) | ((uint16_t)hexvalue[1] << 8) | hexvalue[2];
+	} else {
+		addr = ((uint32_t)hexvalue[0] << 24) | ((uint32_t)hexvalue[1] << 16) | ((uint16_t)hexvalue[2] << 8) | hexvalue[3];
+	}
+
+	hex_size = atoi_hex(cmd_words_b[2]);
+	if (hex_size == 0) goto err;
+	if (hex_size == 1) {
+		len = hexvalue[0];
+	} else if (hex_size == 2) {
+		len = ((uint16_t)hexvalue[0] << 8) | hexvalue[1];
+	} else if (hex_size == 3) {
+		len = ((uint32_t)hexvalue[0] << 16) | ((uint16_t)hexvalue[1] << 8) | hexvalue[2];
+	} else {
+		len = ((uint32_t)hexvalue[0] << 24) | ((uint32_t)hexvalue[1] << 16) | ((uint16_t)hexvalue[2] << 8) | hexvalue[3];
+	}
+
+	if (!atoi_hex(cmd_words_b[3])) goto err;
+	cmd_r = hexvalue[0];
+
+	if (!atoi_hex(cmd_words_b[4])) goto err;
+	dummy = hexvalue[0];
+
+	if (!atoi_hex(cmd_words_b[5])) goto err;
+	div = hexvalue[0];
+
+	if (!atoi_hex(cmd_words_b[6])) goto err;
+	cfg = hexvalue[0];
+
+	print_string("\nRunning CRC-16 Diagnostic:");
+	print_string("\n  Addr:  0x"); print_long(addr);
+	print_string("\n  Len:   0x"); print_long(len);
+	print_string("\n  Cmd:   0x"); print_byte(cmd_r);
+	print_string("\n  Dummy: 0x"); print_byte(dummy);
+	print_string("\n  Div:   0x"); print_byte(div);
+	print_string("\n  Cfg:   0x"); print_byte(cfg);
+	print_string("\nCalculating...");
+
+	while (flash_read_status() & 0x1);
+
+	crc_value = 0x0000;
+	bytes_left = len;
+
+	while (bytes_left > 0) {
+		block_len = (bytes_left > FLASH_BUF_SIZE) ? FLASH_BUF_SIZE : bytes_left;
+		
+		flash_region.addr = addr;
+		flash_region.len = block_len;
+		diag_cmd = cmd_r;
+		diag_dummy = dummy;
+		diag_div = div;
+		diag_cfg = cfg;
+		flash_read_diagnostic(flash_buf);
+
+		if (bytes_left == len) {
+			print_string("\nFirst 16 bytes: ");
+			for (i = 0; i < 16; i++) {
+				print_byte(flash_buf[i]);
+				write_char(' ');
+			}
+			print_string("\n");
+		}
+
+		addr += block_len;
+
+		bptr = flash_buf;
+		for (i = 0; i < block_len; i++) {
+			crc16(bptr++);
+		}
+		
+		bytes_left -= block_len;
+	}
+
+	print_string("\nResult CRC16: "); print_short(crc_value); write_char('\n');
+	return;
+
+err:
+	print_string("Usage: crcflash <hex:addr> <hex:len> <hex:cmd> <hex:dummy> <hex:div> <hex:cfg>\n");
+}
+
+void parse_xxdflash(void)
+{
+	static __xdata uint32_t addr;
+	static __xdata uint32_t len;
+	static __xdata uint32_t line_addr;
+	static __xdata uint8_t  cmd_r;
+	static __xdata uint8_t  dummy;
+	static __xdata uint8_t  div;
+	static __xdata uint8_t  cfg;
+	static __xdata uint8_t  c;
+	static __xdata uint32_t bytes_left;
+	static __xdata uint16_t block_len;
+	static __xdata uint16_t i;
+	static __xdata uint16_t j;
+	static __xdata uint8_t * __xdata bptr;
+	static __xdata uint8_t  hex_size;
+
+	if (cmd_words_len != 7) goto err;
+
+	hex_size = atoi_hex(cmd_words_b[1]);
+	if (hex_size == 0) goto err;
+	if (hex_size == 1) {
+		addr = hexvalue[0];
+	} else if (hex_size == 2) {
+		addr = ((uint16_t)hexvalue[0] << 8) | hexvalue[1];
+	} else if (hex_size == 3) {
+		addr = ((uint32_t)hexvalue[0] << 16) | ((uint16_t)hexvalue[1] << 8) | hexvalue[2];
+	} else {
+		addr = ((uint32_t)hexvalue[0] << 24) | ((uint32_t)hexvalue[1] << 16) | ((uint16_t)hexvalue[2] << 8) | hexvalue[3];
+	}
+
+	hex_size = atoi_hex(cmd_words_b[2]);
+	if (hex_size == 0) goto err;
+	if (hex_size == 1) {
+		len = hexvalue[0];
+	} else if (hex_size == 2) {
+		len = ((uint16_t)hexvalue[0] << 8) | hexvalue[1];
+	} else if (hex_size == 3) {
+		len = ((uint32_t)hexvalue[0] << 16) | ((uint16_t)hexvalue[1] << 8) | hexvalue[2];
+	} else {
+		len = ((uint32_t)hexvalue[0] << 24) | ((uint32_t)hexvalue[1] << 16) | ((uint16_t)hexvalue[2] << 8) | hexvalue[3];
+	}
+
+	if (!atoi_hex(cmd_words_b[3])) goto err;
+	cmd_r = hexvalue[0];
+
+	if (!atoi_hex(cmd_words_b[4])) goto err;
+	dummy = hexvalue[0];
+
+	if (!atoi_hex(cmd_words_b[5])) goto err;
+	div = hexvalue[0];
+
+	if (!atoi_hex(cmd_words_b[6])) goto err;
+	cfg = hexvalue[0];
+
+	print_string("\nXXD Dump (Parameters: cmd=0x"); print_byte(cmd_r); 
+	print_string(" dummy=0x"); print_byte(dummy); print_string(" div=0x"); print_byte(div);
+	print_string(" cfg=0x"); print_byte(cfg); print_string(")\n");
+
+	while (flash_read_status() & 0x1);
+	bytes_left = len;
+
+	while (bytes_left > 0) {
+		block_len = (bytes_left > DIAGNOSTIC_CHUNK_SIZE) ? DIAGNOSTIC_CHUNK_SIZE : bytes_left;
+		if (block_len > FLASH_BUF_SIZE) block_len = FLASH_BUF_SIZE;
+		
+		flash_region.addr = addr;
+		flash_region.len = block_len;
+		diag_cmd = cmd_r;
+		diag_dummy = dummy;
+		diag_div = div;
+		diag_cfg = cfg;
+		flash_read_diagnostic(flash_buf);
+		addr += block_len;
+
+		for (i = 0; i < block_len; i += 16) {
+			line_addr = (addr - block_len) + i;
+			print_byte(line_addr >> 24);
+			print_byte(line_addr >> 16);
+			print_byte(line_addr >> 8);
+			print_byte(line_addr);
+			write_char(':'); write_char(' ');
+
+			for (j = 0; j < 16; j++) {
+				if (i + j < block_len) {
+					print_byte(flash_buf[i + j]);
+				} else {
+					write_char(' '); write_char(' ');
+				}
+				if (j % 2 == 1) write_char(' ');
+			}
+			write_char(' '); 
+
+			for (j = 0; j < 16; j++) {
+				if (i + j < block_len) {
+					c = flash_buf[i + j];
+					if (c >= 32 && c <= 126) write_char(c);
+					else write_char('.');
+				}
+			}
+			write_char('\n');
+		}
+		bytes_left -= block_len;
+	}
+	return;
+
+err:
+	print_string("Usage: xxdflash <hex:addr> <hex:len> <hex:cmd> <hex:dummy> <hex:div> <hex:cfg>\n");
+}
+
 // Parse command into words
 // cmd_words_len contains the number of words found.
 // cmd_words_b[] contains only start of a word offset.
@@ -1597,8 +1817,11 @@ void cmd_parser(void) __banked
 			}
 		} else if (cmd_compare(0, "ingress")) {
 			parse_ingress();
-		}
-		else {
+		} else if (cmd_compare(0, "crcflash")) {
+			parse_crcflash();
+		} else if (cmd_compare(0, "xxdflash")) {
+			parse_xxdflash();
+		} else {
 			print_string("Unknown command\n");
 		}
 
