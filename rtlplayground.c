@@ -1740,6 +1740,9 @@ void check_and_flash_update_image(void)
 		static __xdata uint16_t i = 0;
 		static __xdata uint16_t j = 0;
 		static __xdata uint8_t * __xdata bptr;
+#ifdef SPI_BROKEN_FREAD
+		flash_init(0);
+#endif
 		print_string("found update image!\nChecking integrity");
 		set_sys_led_state(SYS_LED_FAST);
 		crc_value = 0x0000;
@@ -1794,6 +1797,9 @@ void check_and_flash_update_image(void)
 			flash_sector_erase();
 			dest += 0x1000;
 		}
+#ifdef SPI_BROKEN_FREAD
+		flash_init(1);
+#endif
 	}
 	else
 	{

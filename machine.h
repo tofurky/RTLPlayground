@@ -91,4 +91,9 @@ typedef struct machine_runtime
 
 void machine_custom_init(void);
 
+#if defined MACHINE_YS_25_0402_V1_0
+	// This model has been seen to consistently misread OTAs when using "fast" SPI reads
+	#define SPI_BROKEN_FREAD
+#endif
+
 #endif

@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include "rtl837x_common.h"
 #include "rtl837x_sfr.h"
+#include "machine.h"
 
 __xdata uint8_t dio_enabled;
 __xdata struct flash_region_t flash_region;
@@ -17,9 +18,9 @@ __xdata uint8_t flash_capacity_code;
 // For the flash commands, see e.g. Windbond W25Q32JV datasheet
 #define CMD_WRITE_STATUS	0x01
 #define CMD_PAGE_PROGRAM	0x02
-// Don't use command `READ 0x03`, because on many device this command can't run at maximum SPI-clock speed.
-// Use `Fast READ 0x0b` instead!
-//#define CMD_READ		0x03
+// Don't use command `READ 0x03` by default, because on many devices this command can't run at maximum SPI-clock speed.
+// Use `DIO Fast READ 0xbb` instead!
+#define CMD_READ		0x03
 #define CMD_READ_STATUS		0x05
 #define CMD_WRITE_ENABLE	0x06
 #define CMD_FREAD			0x0b
@@ -225,8 +226,14 @@ void flash_read_bulk(__xdata uint8_t *dst)
 		SFR_FLASH_DUMMYCYCLES = 4;
 	} else {
 		SFR_FLASH_MODEB = 0x0;
-		SFR_FLASH_CMD_R = CMD_FREAD;	// Fast read
-		SFR_FLASH_DUMMYCYCLES = 8;	// Add 8 dummy clocks
+#ifdef SPI_BROKEN_FREAD
+		// Certain devices have buggy flash that can return bad data via fast read, so use a normal read for those
+		SFR_FLASH_CMD_R = CMD_READ;
+		SFR_FLASH_DUMMYCYCLES = 0;
+#else
+		SFR_FLASH_CMD_R = CMD_FREAD;
+		SFR_FLASH_DUMMYCYCLES = 8;
+#endif
 	}
 
 
@@ -256,6 +263,8 @@ void flash_read_bulk(__xdata uint8_t *dst)
 			break;
 		flash_region.len -= 4;
 	}
+
+	flash_configure_mmio();
 }
 
 
