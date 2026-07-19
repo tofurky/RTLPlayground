@@ -694,14 +694,11 @@ void send_status(void)
 					sfp_send_data(sfp, 238, 1);
 				}
 				slen += strtox(outbuf + slen,"\",\"sfp_vendor\":\"");
-				for (register uint8_t s = 0; s < 16 && sfp_module_vendor[sfp][s]; s++)
-					outbuf[slen++] = sfp_module_vendor[sfp][s];
+				slen += strtox_x(outbuf + slen, sfp_module_vendor[sfp]);
 				slen += strtox(outbuf + slen,"\",\"sfp_model\":\"");
-				for (register uint8_t s = 0; s < 16 && sfp_module_model[sfp][s]; s++)
-					outbuf[slen++] = sfp_module_model[sfp][s];
+				slen += strtox_x(outbuf + slen, sfp_module_model[sfp]);
 				slen += strtox(outbuf + slen,"\",\"sfp_serial\":\"");
-				for (register uint8_t s = 0; s < 16 && sfp_module_serial[sfp][s]; s++)
-					outbuf[slen++] = sfp_module_serial[sfp][s];
+				slen += strtox_x(outbuf + slen, sfp_module_serial[sfp]);
 				slen += strtox(outbuf + slen,"\",\"sfp_los\":");
 				if (machine.sfp_port[sfp].pin_los == GPIO_NA) {
 					slen += strtox(outbuf + slen,"null");

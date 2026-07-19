@@ -324,6 +324,16 @@ uint16_t strtox(register __xdata uint8_t *dst, register __code const char *s)
 }
 
 
+uint16_t strtox_x(register __xdata uint8_t *dst, register __xdata const char *s)
+{
+	__xdata uint8_t *b = dst;
+	while (*s)
+		*dst++ = *s++;
+	*dst = 0;
+	return dst - b;
+}
+
+
 uint16_t strlen(register __code const char *s)
 {
 	uint16_t l = 0;
