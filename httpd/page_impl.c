@@ -827,6 +827,8 @@ void send_mtu(void)
 }
 
 
+#pragma save
+#pragma noinvariant
 void send_status(void)
 {
 	slen = strtox(outbuf, HTTP_RESPONCE_JSON);
@@ -957,6 +959,7 @@ void send_status(void)
 			char_to_html(']');
 	}
 }
+#pragma restore
 
 
 void send_config(void)
