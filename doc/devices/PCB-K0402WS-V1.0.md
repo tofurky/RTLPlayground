@@ -6,7 +6,7 @@ The board does have footprints for a VLAN modeswitch at the front and a second f
 
 ### Brands
 
-* YuanLey YS25-0402 <small>Note: there are [multiple revisions](PCB-K0402WS-V3.0.md) of the YS25-0402. This first revision lacks the "Vlan" switch cutout on the front of the enclosure.</small>
+* YuanLey YS25-0402 <sup><sub>Note: there are [multiple revisions](PCB-K0402WS-V3.0.md) of the YS25-0402. This first revision lacks the "Vlan" switch cutout on the front of the enclosure.<sup><sub>
 
 ### Programming
 
